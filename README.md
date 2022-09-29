@@ -1,6 +1,6 @@
 # Getting Started
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+See the Beta here: (http://10.26.20.136:4000/#/trade).
 
 ## Available Scripts
 
