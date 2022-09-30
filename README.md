@@ -3,6 +3,7 @@
 ### Beta [Click Here to see the Prototype]
 
 ### What is Perped? [Click Here to Learn More] 
+Perped uses a GMX-like user interface with a first party oracle (being developed in collaboration with API3), using off-chain http calls through Moralis or Alchemy to trigger liquidations. Since there’s no consensus that needs to be reached it’s cheaper to deploy more assets, which helps solve the mev problem.
 
 ### Roadmap [Click Here to See the Future of Perped]
 
