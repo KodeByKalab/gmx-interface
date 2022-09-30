@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
+import { Trans, t } from "@lingui/macro";
 import { ethers } from "ethers";
 import { BsArrowRight } from "react-icons/bs";
 
@@ -13,24 +14,30 @@ import {
   bigNumberify,
   usePrevious,
   formatAmountFree,
-  fetcher,
   parseValue,
   expandDecimals,
   shouldRaiseGasError,
   getTokenInfo,
   getLiquidationPrice,
   approveTokens,
-} from "../../Helpers";
-import { getContract } from "../../Addresses";
+  IS_NETWORK_DISABLED,
+  getChainName,
+} from "../../lib/legacy";
+import { getContract } from "../../config/Addresses";
 import Tab from "../Tab/Tab";
 import Modal from "../Modal/Modal";
-import { callContract } from "../../Api";
 
 import PositionRouter from "../../abis/PositionRouter.json";
 import Token from "../../abis/Token.json";
+import Tooltip from "../Tooltip/Tooltip";
 
-const DEPOSIT = "Deposit";
-const WITHDRAW = "Withdraw";
+import { getConstant } from "../../config/chains";
+import StatsTooltipRow from "../StatsTooltip/StatsTooltipRow";
+import { fetcher } from "../../lib/contracts/fetcher";
+import { callContract } from "../../lib/contracts/callContract";
+
+const DEPOSIT = t`Deposit`;
+const WITHDRAW = t`Withdraw`;
 const EDIT_OPTIONS = [DEPOSIT, WITHDRAW];
 const { AddressZero } = ethers.constants;
 
@@ -57,6 +64,9 @@ export default function PositionEditor(props) {
     isPositionRouterApproving,
     approvePositionRouter,
     chainId,
+    minExecutionFee,
+    minExecutionFeeUSD,
+    minExecutionFeeErrorMessage,
   } = props;
   const nativeTokenAddress = getContract(chainId, "NATIVE_TOKEN");
   const position = positionsMap && positionKey ? positionsMap[positionKey] : undefined;
@@ -76,9 +86,9 @@ export default function PositionEditor(props) {
     }
   );
 
-  const { data: minExecutionFee } = useSWR([active, chainId, positionRouterAddress, "minExecutionFee"], {
-    fetcher: fetcher(library, PositionRouter),
-  });
+  // const { data: minExecutionFee } = useSWR([active, chainId, positionRouterAddress, "minExecutionFee"], {
+  //   fetcher: fetcher(library, PositionRouter),
+  // });
 
   const isDeposit = option === DEPOSIT;
   const isWithdrawal = option === WITHDRAW;
@@ -173,37 +183,41 @@ export default function PositionEditor(props) {
   }
 
   const getError = () => {
+    if (IS_NETWORK_DISABLED[chainId]) {
+      if (isDeposit) return [t`Deposit disabled, pending ${getChainName(chainId)} upgrade`];
+      return [t`Withdraw disabled, pending ${getChainName(chainId)} upgrade`];
+    }
     if (!fromAmount) {
-      return "Enter an amount";
+      return t`Enter an amount`;
     }
     if (nextLeverage && nextLeverage.eq(0)) {
-      return "Enter an amount";
+      return t`Enter an amount`;
     }
 
     if (!isDeposit && fromAmount) {
       if (fromAmount.gte(position.collateral)) {
-        return "Min order: 10 USD";
+        return t`Min order: 10 USD`;
       }
       if (position.collateral.sub(fromAmount).lt(expandDecimals(10, USD_DECIMALS))) {
-        return "Min order: 10 USD";
+        return t`Min order: 10 USD`;
       }
     }
 
     if (!isDeposit && fromAmount && nextLiquidationPrice) {
       if (position.isLong && position.markPrice.lt(nextLiquidationPrice)) {
-        return "Invalid liq. price";
+        return t`Invalid liq. price`;
       }
       if (!position.isLong && position.markPrice.gt(nextLiquidationPrice)) {
-        return "Invalid liq. price";
+        return t`Invalid liq. price`;
       }
     }
 
     if (nextLeverageExcludingPnl && nextLeverageExcludingPnl.lt(1.1 * BASIS_POINTS_DIVISOR)) {
-      return "Min leverage: 1.1x";
+      return t`Min leverage: 1.1x`;
     }
 
     if (nextLeverageExcludingPnl && nextLeverageExcludingPnl.gt(30.5 * BASIS_POINTS_DIVISOR)) {
-      return "Max leverage: 30x";
+      return t`Max leverage: 30x`;
     }
   };
 
@@ -232,35 +246,35 @@ export default function PositionEditor(props) {
     }
     if (isSwapping) {
       if (isDeposit) {
-        return "Depositing...";
+        return t`Depositing...`;
       }
-      return "Withdrawing...";
+      return t`Withdrawing...`;
     }
 
     if (isApproving) {
-      return `Approving ${position.collateralToken.symbol}...`;
+      return t`Approving ${position.collateralToken.symbol}...`;
     }
     if (needApproval) {
-      return `Approve ${position.collateralToken.symbol}`;
+      return t`Approve ${position.collateralToken.symbol}`;
     }
 
     if (needPositionRouterApproval && isWaitingForPositionRouterApproval) {
-      return "Enabling Leverage";
+      return t`Enabling Leverage`;
     }
 
     if (isPositionRouterApproving) {
-      return "Enabling Leverage...";
+      return t`Enabling Leverage...`;
     }
 
     if (needPositionRouterApproval) {
-      return "Enable Leverage";
+      return t`Enable Leverage`;
     }
 
     if (isDeposit) {
-      return "Deposit";
+      return t`Deposit`;
     }
 
-    return "Withdraw";
+    return t`Withdraw`;
   };
 
   const resetForm = () => {
@@ -322,11 +336,11 @@ export default function PositionEditor(props) {
     const contract = new ethers.Contract(positionRouterAddress, PositionRouter.abi, library.getSigner());
     callContract(chainId, contract, method, params, {
       value,
-      sentMsg: "Deposit submitted.",
-      successMsg: `Requested deposit of ${formatAmount(fromAmount, position.collateralToken.decimals, 4)} ${
+      sentMsg: t`Deposit submitted.`,
+      successMsg: t`Requested deposit of ${formatAmount(fromAmount, position.collateralToken.decimals, 4)} ${
         position.collateralToken.symbol
       } into ${position.indexToken.symbol} ${position.isLong ? "Long" : "Short"}.`,
-      failMsg: "Deposit failed.",
+      failMsg: t`Deposit failed.`,
       setPendingTxns,
     })
       .then(async (res) => {
@@ -375,11 +389,11 @@ export default function PositionEditor(props) {
     const contract = new ethers.Contract(positionRouterAddress, PositionRouter.abi, library.getSigner());
     callContract(chainId, contract, method, params, {
       value: minExecutionFee,
-      sentMsg: "Withdrawal submitted.",
-      successMsg: `Requested withdrawal of ${formatAmount(fromAmount, USD_DECIMALS, 2)} USD from ${
+      sentMsg: t`Withdrawal submitted.`,
+      successMsg: t`Requested withdrawal of ${formatAmount(fromAmount, USD_DECIMALS, 2)} USD from ${
         position.indexToken.symbol
       } ${position.isLong ? "Long" : "Short"}.`,
-      failMsg: "Withdrawal failed.",
+      failMsg: t`Withdrawal failed.`,
       setPendingTxns,
     })
       .then(async (res) => {
@@ -417,8 +431,8 @@ export default function PositionEditor(props) {
 
     if (needPositionRouterApproval) {
       approvePositionRouter({
-        sentMsg: isDeposit ? "Enable deposit sent." : "Enable withdraw sent.",
-        failMsg: isDeposit ? "Enable deposit failed." : "Enable withdraw failed.",
+        sentMsg: isDeposit ? t`Enable deposit sent.` : t`Enable withdraw sent.`,
+        failMsg: isDeposit ? t`Enable deposit failed.` : t`Enable withdraw failed.`,
       });
       return;
     }
@@ -430,6 +444,7 @@ export default function PositionEditor(props) {
 
     withdrawCollateral();
   };
+  const nativeTokenSymbol = getConstant(chainId, "nativeTokenSymbol");
 
   return (
     <div className="PositionEditor">
@@ -444,11 +459,11 @@ export default function PositionEditor(props) {
                     <div className="muted">
                       {convertedAmountFormatted && (
                         <div className="Exchange-swap-usd">
-                          {isDeposit ? "Deposit" : "Withdraw"}: {convertedAmountFormatted}{" "}
+                          {isDeposit ? t`Deposit` : t`Withdraw`}: {convertedAmountFormatted}{" "}
                           {isDeposit ? "USD" : position.collateralToken.symbol}
                         </div>
                       )}
-                      {!convertedAmountFormatted && `${isDeposit ? "Deposit" : "Withdraw"}`}
+                      {!convertedAmountFormatted && `${isDeposit ? t`Deposit` : t`Withdraw`}`}
                     </div>
                     {maxAmount && (
                       <div className="muted align-right clickable" onClick={() => setFromValue(maxAmountFormattedFree)}>
@@ -483,12 +498,19 @@ export default function PositionEditor(props) {
                   </div>
                 </div>
                 <div className="PositionEditor-info-box">
+                  {minExecutionFeeErrorMessage && (
+                    <div className="Confirmation-box-warning">{minExecutionFeeErrorMessage}</div>
+                  )}
                   <div className="Exchange-info-row">
-                    <div className="Exchange-info-label">Size</div>
+                    <div className="Exchange-info-label">
+                      <Trans>Size</Trans>
+                    </div>
                     <div className="align-right">{formatAmount(position.size, USD_DECIMALS, 2, true)} USD</div>
                   </div>
                   <div className="Exchange-info-row">
-                    <div className="Exchange-info-label">Collateral</div>
+                    <div className="Exchange-info-label">
+                      <Trans>Collateral</Trans>
+                    </div>
                     <div className="align-right">
                       {!nextCollateral && <div>${formatAmount(position.collateral, USD_DECIMALS, 2, true)}</div>}
                       {nextCollateral && (
@@ -503,7 +525,9 @@ export default function PositionEditor(props) {
                     </div>
                   </div>
                   <div className="Exchange-info-row">
-                    <div className="Exchange-info-label">Leverage</div>
+                    <div className="Exchange-info-label">
+                      <Trans>Leverage</Trans>
+                    </div>
                     <div className="align-right">
                       {!nextLeverage && <div>{formatAmount(position.leverage, 4, 2, true)}x</div>}
                       {nextLeverage && (
@@ -518,11 +542,15 @@ export default function PositionEditor(props) {
                     </div>
                   </div>
                   <div className="Exchange-info-row">
-                    <div className="Exchange-info-label">Mark Price</div>
+                    <div className="Exchange-info-label">
+                      <Trans>Mark Price</Trans>
+                    </div>
                     <div className="align-right">${formatAmount(position.markPrice, USD_DECIMALS, 2, true)}</div>
                   </div>
                   <div className="Exchange-info-row">
-                    <div className="Exchange-info-label">Liq. Price</div>
+                    <div className="Exchange-info-label">
+                      <Trans>Liq. Price</Trans>
+                    </div>
                     <div className="align-right">
                       {!nextLiquidationPrice && (
                         <div>
@@ -539,6 +567,43 @@ export default function PositionEditor(props) {
                           ${formatAmount(nextLiquidationPrice, USD_DECIMALS, 2, true)}
                         </div>
                       )}
+                    </div>
+                  </div>
+                  <div className="Exchange-info-row">
+                    <div className="Exchange-info-label">
+                      <Trans>Execution Fee</Trans>
+                    </div>
+                    <div className="align-right">
+                      <Tooltip
+                        handle={`${formatAmountFree(minExecutionFee, 18, 5)} ${nativeTokenSymbol}`}
+                        position="right-top"
+                        renderContent={() => {
+                          return (
+                            <>
+                              <StatsTooltipRow
+                                label="Network fee"
+                                showDollar={false}
+                                value={`${formatAmountFree(
+                                  minExecutionFee,
+                                  18,
+                                  5
+                                )} ${nativeTokenSymbol} ($${formatAmount(minExecutionFeeUSD, USD_DECIMALS, 2)})`}
+                              />
+                              <br />
+                              This is the network cost required to execute the {isDeposit
+                                ? "deposit"
+                                : "withdrawal"}.{" "}
+                              <a
+                                href="https://gmxio.gitbook.io/gmx/trading#execution-fee"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                More Info
+                              </a>
+                            </>
+                          );
+                        }}
+                      />
                     </div>
                   </div>
                 </div>

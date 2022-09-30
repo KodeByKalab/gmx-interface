@@ -5,14 +5,13 @@ import useSWR from "swr";
 import {
   PLACEHOLDER_ACCOUNT,
   getServerUrl,
-  fetcher,
   formatKeyAmount,
   getBalanceAndSupplyData,
   getDepositBalanceData,
   getVestingData,
   getStakingData,
   getProcessedData,
-} from "../../Helpers";
+} from "../../lib/legacy";
 
 import Vault from "../../abis/Vault.json";
 import ReaderV2 from "../../abis/ReaderV2.json";
@@ -22,9 +21,10 @@ import GlpManager from "../../abis/GlpManager.json";
 
 import { useWeb3React } from "@web3-react/core";
 
-import { useGmxPrice } from "../../Api";
+import { useGmxPrice } from "../../domain/legacy";
 
-import { getContract } from "../../Addresses";
+import { getContract } from "../../config/Addresses";
+import { fetcher } from "../../lib/contracts/fetcher";
 
 export default function APRLabel({ chainId, label }) {
   let { active } = useWeb3React();

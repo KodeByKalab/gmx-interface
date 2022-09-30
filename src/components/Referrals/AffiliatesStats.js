@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from "react";
-import { FiPlus } from "react-icons/fi";
+import { Trans, t } from "@lingui/macro";
+import { FiPlus, FiTwitter } from "react-icons/fi";
 import { useCopyToClipboard } from "react-use";
 import { IoWarningOutline } from "react-icons/io5";
 import { BiCopy, BiErrorCircle } from "react-icons/bi";
 import Card from "../Common/Card";
 import Modal from "../Modal/Modal";
-import { getNativeToken, getToken } from "../../data/Tokens";
+import { getNativeToken, getToken } from "../../config/Tokens";
 import {
   AVALANCHE,
   bigNumberify,
@@ -15,10 +16,16 @@ import {
   helperToast,
   REFERRAL_CODE_QUERY_PARAM,
   shortenAddress,
-} from "../../Helpers";
+} from "../../lib/legacy";
 import EmptyMessage from "./EmptyMessage";
 import InfoCard from "./InfoCard";
-import { getTierIdDisplay, getUSDValue, isRecentReferralCodeNotExpired, tierRebateInfo } from "./referralsHelper";
+import {
+  getTierIdDisplay,
+  getTwitterShareUrl,
+  getUSDValue,
+  isRecentReferralCodeNotExpired,
+  tierRebateInfo,
+} from "./referralsHelper";
 import { AffiliateCodeForm } from "./AddAffiliateCode";
 import TooltipWithPortal from "../Tooltip/TooltipWithPortal";
 
@@ -59,18 +66,18 @@ function AffiliatesStats({
     <div className="referral-body-container">
       <div className="referral-stats">
         <InfoCard
-          label="Total Traders Referred"
-          tooltipText="Amount of traders you referred."
+          label={t`Total Traders Referred`}
+          tooltipText={t`Amount of traders you referred.`}
           data={cumulativeStats?.registeredReferralsCount || "0"}
         />
         <InfoCard
-          label="Total Trading Volume"
-          tooltipText="Volume traded by your referred traders."
+          label={t`Total Trading Volume`}
+          tooltipText={t`Volume traded by your referred traders.`}
           data={getUSDValue(cumulativeStats?.volume)}
         />
         <InfoCard
-          label="Total Rebates"
-          tooltipText="Rebates earned by this account as an affiliate."
+          label={t`Total Rebates`}
+          tooltipText={t`Rebates earned by this account as an affiliate.`}
           data={getUSDValue(referrerRebates, 4)}
         />
       </div>
@@ -79,7 +86,7 @@ function AffiliatesStats({
           className="Connect-wallet-modal"
           isVisible={isAddReferralCodeModalOpen}
           setIsVisible={close}
-          label="Create Referral Code"
+          label={t`Create Referral Code`}
           onAfterOpen={() => addNewModalRef.current?.focus()}
         >
           <div className="edit-referral-modal">
@@ -111,16 +118,16 @@ function AffiliatesStats({
               <thead>
                 <tr>
                   <th className="table-head" scope="col">
-                    Referral Code
+                    <Trans>Referral Code</Trans>
                   </th>
                   <th className="table-head" scope="col">
-                    Total Volume
+                    <Trans>Total Volume</Trans>
                   </th>
                   <th className="table-head" scope="col">
-                    Traders Referred
+                    <Trans>Traders Referred</Trans>
                   </th>
                   <th className="table-head" scope="col">
-                    Total Rebates
+                    <Trans>Total Rebates</Trans>
                   </th>
                 </tr>
               </thead>
@@ -135,16 +142,24 @@ function AffiliatesStats({
                     <tr key={index}>
                       <td data-label="Referral Code">
                         <div className="table-referral-code">
+                          <span className="referral-text ">{stat.referralCode}</span>
                           <div
                             onClick={() => {
                               copyToClipboard(`https://gmx.io/#/?${REFERRAL_CODE_QUERY_PARAM}=${stat.referralCode}`);
                               helperToast.success("Referral link copied to your clipboard");
                             }}
-                            className="referral-code copy-icon"
+                            className="copy-icon"
                           >
-                            <span>{stat.referralCode}</span>
                             <BiCopy />
                           </div>
+                          <a
+                            href={getTwitterShareUrl(stat.referralCode)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="copy-icon"
+                          >
+                            <FiTwitter />
+                          </a>
                           {ownerOnOtherChain && !ownerOnOtherChain?.isTaken && (
                             <div className="info">
                               <TooltipWithPortal
@@ -200,13 +215,13 @@ function AffiliatesStats({
                 <thead>
                   <tr>
                     <th className="table-head" scope="col">
-                      Date
+                      <Trans>Date</Trans>
                     </th>
                     <th className="table-head" scope="col">
-                      Amount
+                      <Trans>Amount</Trans>
                     </th>
                     <th className="table-head" scope="col">
-                      Transaction
+                      <Trans>Transaction</Trans>
                     </th>
                   </tr>
                 </thead>
@@ -245,7 +260,10 @@ function AffiliatesStats({
           </Card>
         </div>
       ) : (
-        <EmptyMessage tooltipText="Rebates are airdropped weekly." message="No rebates distribution history yet." />
+        <EmptyMessage
+          tooltipText={t`Rebates are airdropped weekly.`}
+          message={t`No rebates distribution history yet.`}
+        />
       )}
     </div>
   );

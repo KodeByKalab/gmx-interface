@@ -16,6 +16,20 @@ export const homeEventsData = [
       },
     ],
   },
+  {
+    id: "arbitrum-nitro-upgrade",
+    title: "Arbitrum Nitro Upgrade",
+    isActive: true,
+    validTill: "31 Aug 2022, 20:00",
+    bodyText: "The Arbitrum Nitro upgrade has been completed.",
+    buttons: [
+      {
+        text: "Read More",
+        link: "https://medium.com/@gmx.io/arbitrum-nitro-5f88c03a46fe",
+        newTab: true,
+      },
+    ],
+  },
 ];
 
 export const appEventsData = [
@@ -185,6 +199,20 @@ export const appEventsData = [
       {
         text: "Learn More",
         link: "https://gmxio.gitbook.io/gmx/trading#backup-rpc-urls",
+        newTab: true,
+      },
+    ],
+  },
+  {
+    id: "arbitrum-nitro-upgrade",
+    title: "Arbitrum Nitro Upgrade",
+    isActive: true,
+    validTill: "31 Aug 2022, 20:00",
+    bodyText: "The Arbitrum Nitro upgrade has been completed.",
+    buttons: [
+      {
+        text: "Read More",
+        link: "https://medium.com/@gmx.io/arbitrum-nitro-5f88c03a46fe",
         newTab: true,
       },
     ],

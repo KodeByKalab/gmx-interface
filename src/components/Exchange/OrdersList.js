@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { Trans } from "@lingui/macro";
 
 import {
   SWAP,
@@ -6,28 +7,24 @@ import {
   DECREASE,
   USD_DECIMALS,
   formatAmount,
+  getOrderError,
   TRIGGER_PREFIX_ABOVE,
   TRIGGER_PREFIX_BELOW,
   getExchangeRateDisplay,
   getTokenInfo,
   getExchangeRate,
-  getPositionKey,
+  getPositionForOrder,
   getUsd,
-} from "../../Helpers.js";
-import { handleCancelOrder } from "../../Api";
-import { getContract } from "../../Addresses";
+} from "../../lib/legacy.js";
+import { handleCancelOrder } from "../../domain/legacy";
+import { getContract } from "../../config/Addresses";
 
 import Tooltip from "../Tooltip/Tooltip";
 import OrderEditor from "./OrderEditor";
 
 import "./OrdersList.css";
-import Checkbox from "../Checkbox/Checkbox.js";
-
-function getPositionForOrder(account, order, positionsMap) {
-  const key = getPositionKey(account, order.collateralToken, order.indexToken, order.isLong);
-  const position = positionsMap[key];
-  return position && position.size && position.size.gt(0) ? position : null;
-}
+import Checkbox from "../Checkbox/Checkbox";
+import StatsTooltipRow from "../StatsTooltip/StatsTooltipRow";
 
 export default function OrdersList(props) {
   const {
@@ -42,7 +39,7 @@ export default function OrdersList(props) {
     orders,
     hideActions,
     chainId,
-    savedShouldDisableOrderValidation,
+    savedShouldDisableValidationForTesting,
     cancelOrderIdList,
     setCancelOrderIdList,
   } = props;
@@ -86,16 +83,24 @@ export default function OrdersList(props) {
         )}
 
         <th>
-          <div>Type</div>
+          <div>
+            <Trans>Type</Trans>
+          </div>
         </th>
         <th>
-          <div>Order</div>
+          <div>
+            <Trans>Order</Trans>
+          </div>
         </th>
         <th>
-          <div>Price</div>
+          <div>
+            <Trans>Price</Trans>
+          </div>
         </th>
         <th>
-          <div>Mark Price</div>
+          <div>
+            <Trans>Mark Price</Trans>
+          </div>
         </th>
       </tr>
     );
@@ -108,7 +113,9 @@ export default function OrdersList(props) {
 
     return (
       <tr>
-        <td colSpan="5">No open orders</td>
+        <td colSpan="5">
+          <Trans>No open orders</Trans>
+        </td>
       </tr>
     );
   }, [orders]);
@@ -119,12 +126,12 @@ export default function OrdersList(props) {
         <>
           <td>
             <button className="Exchange-list-action" onClick={() => onEditClick(order)}>
-              Edit
+              <Trans>Edit</Trans>
             </button>
           </td>
           <td>
             <button className="Exchange-list-action" onClick={() => onCancelClick(order)}>
-              Cancel
+              <Trans>Cancel</Trans>
             </button>
           </td>
         </>
@@ -209,24 +216,22 @@ export default function OrdersList(props) {
       }
 
       const indexToken = getTokenInfo(infoTokens, order.indexToken);
+
+      // Longs Increase: max price
+      // Longs Decrease: min price
+      // Short Increase: min price
+      // Short Decrease: max price
       const maximisePrice = (order.type === INCREASE && order.isLong) || (order.type === DECREASE && !order.isLong);
+
       const markPrice = maximisePrice ? indexToken.contractMaxPrice : indexToken.contractMinPrice;
       const triggerPricePrefix = order.triggerAboveThreshold ? TRIGGER_PREFIX_ABOVE : TRIGGER_PREFIX_BELOW;
       const indexTokenSymbol = indexToken.isWrapped ? indexToken.baseSymbol : indexToken.symbol;
 
-      let error;
-      if (order.type === DECREASE) {
-        const positionForOrder = getPositionForOrder(account, order, positionsMap);
-        if (!positionForOrder) {
-          error = "No open position, order cannot be executed unless a position is opened";
-        } else if (positionForOrder.size.lt(order.sizeDelta)) {
-          error = "Order size is bigger than position, will only be executable if position increases";
-        }
-      }
+      const error = getOrderError(account, order, positionsMap);
       const orderId = `${order.type}-${order.index}`;
       const orderText = (
         <>
-          {order.type} {indexTokenSymbol} {order.isLong ? "Long" : "Short"}
+          {order.type === INCREASE ? "Increase" : "Decrease"} {indexTokenSymbol} {order.isLong ? "Long" : "Short"}
           &nbsp;by ${formatAmount(order.sizeDelta, USD_DECIMALS, 2, true)}
           {error && <div className="Exchange-list-item-error">{error}</div>}
         </>
@@ -262,11 +267,16 @@ export default function OrdersList(props) {
                   const collateralTokenInfo = getTokenInfo(infoTokens, order.purchaseToken);
                   const collateralUSD = getUsd(order.purchaseTokenAmount, order.purchaseToken, false, infoTokens);
                   return (
-                    <span>
-                      Collateral: ${formatAmount(collateralUSD, USD_DECIMALS, 2, true)} (
-                      {formatAmount(order.purchaseTokenAmount, collateralTokenInfo.decimals, 4, true)}{" "}
-                      {collateralTokenInfo.baseSymbol || collateralTokenInfo.symbol})
-                    </span>
+                    <StatsTooltipRow
+                      label="Collateral"
+                      value={`${formatAmount(collateralUSD, USD_DECIMALS, 2, true)} (${formatAmount(
+                        order.purchaseTokenAmount,
+                        collateralTokenInfo.decimals,
+                        4,
+                        true
+                      )}
+                      ${collateralTokenInfo.baseSymbol || collateralTokenInfo.symbol})`}
+                    />
                   );
                 }}
               />
@@ -281,10 +291,10 @@ export default function OrdersList(props) {
               position="right-bottom"
               renderContent={() => {
                 return (
-                  <>
-                    The price that the order can be executed at may differ slightly from the chart price as market
-                    orders can change the price while limit / trigger orders cannot.
-                  </>
+                  <Trans>
+                    The price that orders can be executed at may differ slightly from the chart price, as market orders
+                    update oracle prices, while limit/trigger orders do not.
+                  </Trans>
                 );
               }}
             />
@@ -352,7 +362,9 @@ export default function OrdersList(props) {
                 </div>
               </div>
               <div className="App-card-row">
-                <div className="label">Mark Price</div>
+                <div className="label">
+                  <Trans>Mark Price</Trans>
+                </div>
                 <div>{getExchangeRateDisplay(markExchangeRate, fromTokenInfo, toTokenInfo)}</div>
               </div>
               {!hideActions && (
@@ -360,10 +372,10 @@ export default function OrdersList(props) {
                   <div className="App-card-divider"></div>
                   <div className="App-card-options">
                     <button className="App-button-option App-card-option" onClick={() => onEditClick(order)}>
-                      Edit
+                      <Trans>Edit</Trans>
                     </button>
                     <button className="App-button-option App-card-option" onClick={() => onCancelClick(order)}>
-                      Cancel
+                      <Trans>Cancel</Trans>
                     </button>
                   </div>
                 </>
@@ -382,43 +394,39 @@ export default function OrdersList(props) {
       const collateralTokenInfo = getTokenInfo(infoTokens, order.purchaseToken);
       const collateralUSD = getUsd(order.purchaseTokenAmount, order.purchaseToken, true, infoTokens);
 
-      let error;
-      if (order.type === DECREASE) {
-        const positionForOrder = getPositionForOrder(account, order, positionsMap);
-        if (!positionForOrder) {
-          error = "No open position, order cannot be executed unless a position is opened";
-        } else if (positionForOrder.size.lt(order.sizeDelta)) {
-          error = "Order size is bigger than position, will only be executable if position increases";
-        }
-      }
+      const error = getOrderError(account, order, positionsMap);
 
       return (
         <div key={`${order.isLong}-${order.type}-${order.index}`} className="App-card">
           <div className="App-card-title-small">
-            {order.type} {indexTokenSymbol} {order.isLong ? "Long" : "Short"}
+            {order.type === INCREASE ? "Increase" : "Decrease"} {indexTokenSymbol} {order.isLong ? "Long" : "Short"}
             &nbsp;by ${formatAmount(order.sizeDelta, USD_DECIMALS, 2, true)}
             {error && <div className="Exchange-list-item-error">{error}</div>}
           </div>
           <div className="App-card-divider"></div>
           <div className="App-card-content">
             <div className="App-card-row">
-              <div className="label">Price</div>
+              <div className="label">
+                <Trans>Price</Trans>
+              </div>
               <div>
                 {triggerPricePrefix} {formatAmount(order.triggerPrice, USD_DECIMALS, 2, true)}
               </div>
             </div>
             <div className="App-card-row">
-              <div className="label">Mark Price</div>
+              <div className="label">
+                <Trans>Mark Price</Trans>
+              </div>
               <div>
                 <Tooltip
                   handle={formatAmount(markPrice, USD_DECIMALS, 2, true)}
                   position="right-bottom"
                   renderContent={() => {
                     return (
-                      <>
+                      <Trans>
                         The price that the order can be executed at may differ slightly from the chart price as market
                         orders can change the price while limit / trigger orders cannot.
-                      </>
+                      </Trans>
                     );
                   }}
                 />
@@ -426,7 +434,9 @@ export default function OrdersList(props) {
             </div>
             {order.type === INCREASE && (
               <div className="App-card-row">
-                <div className="label">Collateral</div>
+                <div className="label">
+                  <Trans>Collateral</Trans>
+                </div>
                 <div>
                   ${formatAmount(collateralUSD, USD_DECIMALS, 2, true)} (
                   {formatAmount(order.purchaseTokenAmount, collateralTokenInfo.decimals, 4, true)}{" "}
@@ -439,10 +449,10 @@ export default function OrdersList(props) {
                 <div className="App-card-divider"></div>
                 <div className="App-card-options">
                   <button className="App-button-option App-card-option" onClick={() => onEditClick(order)}>
-                    Edit
+                    <Trans>Edit</Trans>
                   </button>
                   <button className="App-button-option App-card-option" onClick={() => onCancelClick(order)}>
-                    Cancel
+                    <Trans>Cancel</Trans>
                   </button>
                 </div>
               </>
@@ -481,7 +491,7 @@ export default function OrdersList(props) {
           library={library}
           totalTokenWeights={totalTokenWeights}
           usdgSupply={usdgSupply}
-          savedShouldDisableOrderValidation={savedShouldDisableOrderValidation}
+          savedShouldDisableValidationForTesting={savedShouldDisableValidationForTesting}
         />
       )}
     </React.Fragment>
