@@ -1,4 +1,8 @@
-# See the Beta here: (https://perped-10fa4.web.app/#/trade).
+# Beta [Click Here to see the Prototype]
+
+# What is Perped? [Click Here to Learn More] 
+
+# Roadmap [Click Here to See the Future of Perped]
 
 
 
@@ -211,3 +215,6 @@ function Button(props) {...}
 </details>
 
 ---
+[Click Here to see the Prototype]: https://perped-10fa4.web.app/#/trade
+[Click Here to learn more]: https://drive.google.com/file/d/1QtuOD6bK732zWRMsiTaqINpO3Eoxnro9/view?usp=sharing
+[Click Here to see the future of Perped]: https://drive.google.com/file/d/1Awa5JezMhv7Xzezdsfp1DIlE0Xd4lNKU/view?usp=sharing
