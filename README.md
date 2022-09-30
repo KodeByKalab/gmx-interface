@@ -1,10 +1,8 @@
-# Getting Started
+# See the Beta here: (https://perped-10fa4.web.app/#/trade).
 
-See the Beta here: (http://10.26.20.136:4000/#/trade).
 
-## Available Scripts
 
-In the project directory, you can run:
+#In the project directory, you can run:
 
 ### `yarn`
 
